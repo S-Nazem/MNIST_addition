@@ -1,0 +1,1 @@
+source /Users/Saam/Saam/M1_Stuff/MNIST_addition/MNIST_venv/bin/activate
