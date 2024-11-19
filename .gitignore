@@ -1,3 +1,6 @@
+MNIST_venv/
+MNIST_venv/lib
+
 # Byte-compiled files
 __pycache__/
 *.py[cod]
@@ -8,8 +11,6 @@ __pycache__/
 build/
 dist/
 *.egg-info/
-
-MNIST_venv/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
