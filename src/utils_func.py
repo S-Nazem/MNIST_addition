@@ -2,6 +2,19 @@ import random
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
+from torchvision import transforms, datasets
+import ssl
+
+def load_dataset():
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+    test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+
+    full_dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
+
+    return full_dataset
+
+
 
 def combine_images(data, combination_type, label_type = 'sum'):
     combined_images = []
