@@ -1,6 +1,8 @@
 MNIST_venv/
 MNIST_venv/lib
 
+venv/
+
 # Byte-compiled files
 __pycache__/
 *.py[cod]
