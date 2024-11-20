@@ -1,6 +1,7 @@
 import random
 import torch
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader, TensorDataset
 
 def combine_images(data, combination_type, label_type = 'sum'):
     combined_images = []
@@ -111,3 +112,18 @@ def show_images_side_by_side(index, combined_dataset, train_images, train_labels
 
     # Show the plots
     plt.show()
+
+
+def prepare_data(train_images, train_labels, val_images, val_labels, batch_size):
+    train_data_stacked = torch.stack(train_images)
+    train_labels_stacked = torch.tensor(train_labels)
+
+    val_data_stacked = torch.stack(val_images)
+    val_labels_stacked = torch.tensor(val_labels)
+
+    train_tensor = TensorDataset(train_data_stacked, train_labels_stacked)
+    val_tensor = TensorDataset(val_data_stacked, val_labels_stacked)
+
+    train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_tensor, batch_size=batch_size, shuffle=False)
+    return train_loader, val_loader
