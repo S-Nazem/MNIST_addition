@@ -5,7 +5,10 @@ from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms, datasets
 import ssl
 
-def load_dataset():
+def download_dataset():
+
+    ssl._create_default_https_context = ssl._create_unverified_context
+
     transform = transforms.Compose([transforms.ToTensor()])
     train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
     test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
