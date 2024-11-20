@@ -4,18 +4,9 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms, datasets
 import ssl
+from torchvision.transforms import functional as F
+from torchvision.transforms.functional import to_pil_image
 
-def download_dataset():
-
-    ssl._create_default_https_context = ssl._create_unverified_context
-
-    transform = transforms.Compose([transforms.ToTensor()])
-    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
-    test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
-
-    full_dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
-
-    return full_dataset
 
 
 
@@ -143,3 +134,41 @@ def prepare_data(train_images, train_labels, val_images, val_labels, batch_size)
     train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_tensor, batch_size=batch_size, shuffle=False)
     return train_loader, val_loader
+
+
+
+def download_dataset():
+
+    ssl._create_default_https_context = ssl._create_unverified_context
+
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
+    test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
+
+    full_dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
+
+    return full_dataset
+
+
+
+def augment_dataset(train_images):
+    augmented_transform = transforms.Compose([
+    transforms.RandomRotation(degrees=20),
+    transforms.RandomAffine(degrees=20, translate=(0.1, 0.1)),
+    transforms.ToTensor(),
+    transforms.RandomErasing(p=0.5, scale=(0.02, 0.33)),
+    AddGaussianNoise(mean=0.0, std=0.05),
+    AddSaltAndPepperNoise(prob=0.05),
+    transforms.Normalize((0.5,), (0.5,))
+    ])
+
+    augmented_images = []
+
+    for tensor_image in train_images:
+        pil_image = F.to_pil_image(tensor_image)
+        augmented_image = augmented_transform(pil_image)  # Apply transform pipeline
+        augmented_images.append(augmented_image)
+
+    return augmented_images
+
+

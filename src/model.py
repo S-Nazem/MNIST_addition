@@ -43,18 +43,4 @@ class FullyConnectedNN(nn.Module):
     
 
     
-# Instantiate the model
-# model = FullyConnectedNN(input_size=1568, hidden_size=128, num_classes=20, num_hidden_layers=2, activation=nn.ReLU())
 
-# # Define the loss function and optimizer
-# criterion = nn.CrossEntropyLoss()
-# optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-# # Define the data loaders
-# train_data = TensorDataset(train_images_tensor, train_labels_tensor)
-# val_data = TensorDataset(val_images_tensor, val_labels_tensor)
-# test_data = TensorDataset(test_images_tensor, test_labels_tensor)
-
-# train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
-# val_loader = DataLoader(val_data, batch_size=32, shuffle=False)
-# test_loader = DataLoader(test_data, batch_size=32, shuffle=False)

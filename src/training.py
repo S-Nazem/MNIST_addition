@@ -2,9 +2,53 @@ import optuna
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from model import FullyConnectedNN
+import torch.nn.functional as F
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
 
+class FullyConnectedNN(nn.Module):
+    """
+    A fully connected neural network with a variable number of hidden layers.
+    
+    Args:
+    input_size: int, number of input features
+    hidden_size: int, number of hidden units
+    num_classes: int, number of output classes
+    num_hidden_layers: int, number of hidden layers
+    activation: torch activation function, the activation function to use
+    
+    """
+    def __init__(self, input_size, hidden_size, num_hidden_layers, activation, dropout_rate, decay_factor, num_classes=20):
+        super(FullyConnectedNN, self).__init__()
+        # Define the layers
+        layers = []
 
+        # Input layer
+        current_size = hidden_size
+        layers.append(nn.Linear(input_size, current_size))
+        layers.append(activation)
+        layers.append(nn.Dropout(dropout_rate))
+
+        # Hidden layers
+        for _ in range(num_hidden_layers-1):
+            next_size = max(1, int(current_size*decay_factor))
+            layers.append(nn.Linear(current_size, next_size))
+            layers.append(activation)
+            layers.append(nn.Dropout(dropout_rate))
+            current_size = next_size
+
+        # Output layer
+        layers.append(nn.Linear(current_size, num_classes))
+        self.layers = nn.Sequential(*layers)
+        
+    def forward(self, x):
+        # Define the forward pass
+        x = x.view(x.size(0), -1)
+        return self.layers(x)
+    
 
 def train_one_epoch(model, loader, criterion, optimizer, device):
     """
@@ -465,3 +509,230 @@ def FCNN_optimised_5_hyp(optimizer, n_trials = 10, no_epochs = 10, optimisation_
 
 
 
+
+
+# Training and evaluation functions for the rf, knn, svm, lr and gb models (part 3)
+
+def train_and_evaluate_rf(train_X, train_y, val_X, val_y, test_X, test_y):
+    """
+    Train and evaluate a Random Forest classifier
+    
+    Args:
+    train_X: np.ndarray, training data
+    train_y: np.ndarray, training labels
+    val_X: np.ndarray, validation data
+    val_y: np.ndarray, validation labels
+    test_X: np.ndarray, test data
+    test_y: np.ndarray, test labels
+    
+    Returns:
+    val_acc_rf: float, validation accuracy
+    test_acc_rf: float, test accuracy
+    """
+    # Instantiate and train Random Forest Classifier
+    rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)  # 100 trees
+    rf_clf.fit(train_X, train_y)
+    
+    # Evaluate on validation and test sets
+    val_preds_rf = rf_clf.predict(val_X)
+    test_preds_rf = rf_clf.predict(test_X)
+    
+    val_acc_rf = accuracy_score(val_y, val_preds_rf)
+    test_acc_rf = accuracy_score(test_y, test_preds_rf)
+    
+    print(f"Random Forest - Validation Accuracy: {val_acc_rf:.4f}, Test Accuracy: {test_acc_rf:.4f}")
+    
+    return val_acc_rf, test_acc_rf
+
+
+def train_and_evaluate_SVM(train_X, train_y, val_X, val_y, test_X, test_y):
+    """
+    Train and evaluate a Support Vector Machine classifier
+    
+    Args:
+    train_X: np.ndarray, training data
+    train_y: np.ndarray, training labels
+    val_X: np.ndarray, validation data
+    val_y: np.ndarray, validation labels
+    test_X: np.ndarray, test data
+    test_y: np.ndarray, test labels
+    
+    Returns:
+    val_acc_svm: float, validation accuracy
+    test_acc_svm: float, test accuracy
+    """
+    # Instantiate and train Support Vector Machine Classifier
+    svm_clf = SVC(kernel='rbf', random_state=42)
+    svm_clf.fit(train_X, train_y)
+    
+    # Evaluate on validation and test sets
+    val_preds_svm = svm_clf.predict(val_X)
+    test_preds_svm = svm_clf.predict(test_X)
+    
+    val_acc_svm = accuracy_score(val_y, val_preds_svm)
+    test_acc_svm = accuracy_score(test_y, test_preds_svm)
+    
+    print(f"SVM - Validation Accuracy: {val_acc_svm:.4f}, Test Accuracy: {test_acc_svm:.4f}")
+    
+    return val_acc_svm, test_acc_svm
+
+
+
+def train_and_evaluate_lr(train_X, train_y, val_X, val_y, test_X, test_y):
+    """
+    Train and evaluate a Logistic Regression classifier
+    
+    Args:
+    train_X: np.ndarray, training data
+    train_y: np.ndarray, training labels
+    val_X: np.ndarray, validation data
+    val_y: np.ndarray, validation labels
+    test_X: np.ndarray, test data
+    test_y: np.ndarray, test labels
+    
+    Returns:
+    val_acc_lr: float, validation accuracy
+    test_acc_lr: float, test accuracy
+    """
+    # Instantiate and train Logistic Regression Classifier
+    lr_clf = LogisticRegression(random_state=42, max_iter=1000)
+    lr_clf.fit(train_X, train_y)
+    
+    # Evaluate on validation and test sets
+    val_preds_lr = lr_clf.predict(val_X)
+    test_preds_lr = lr_clf.predict(test_X)
+    
+    val_acc_lr = accuracy_score(val_y, val_preds_lr)
+    test_acc_lr = accuracy_score(test_y, test_preds_lr)
+    
+    print(f"Logistic Regression - Validation Accuracy: {val_acc_lr:.4f}, Test Accuracy: {test_acc_lr:.4f}")
+    
+    return val_acc_lr, test_acc_lr
+
+
+
+
+def train_and_evaluate_KNN(train_X, train_y, val_X, val_y, test_X, test_y):
+    """
+    Train and evaluate a K-Nearest Neighbors classifier
+    
+    Args:
+    train_X: np.ndarray, training data
+    train_y: np.ndarray, training labels
+    val_X: np.ndarray, validation data
+    val_y: np.ndarray, validation labels
+    test_X: np.ndarray, test data
+    test_y: np.ndarray, test labels
+    
+    Returns:
+    val_acc_knn: float, validation accuracy
+    test_acc_knn: float, test accuracy
+    """
+    # Instantiate and train K-Nearest Neighbors Classifier
+    knn_clf = KNeighborsClassifier(n_neighbors=5)
+    knn_clf.fit(train_X, train_y)
+    
+    # Evaluate on validation and test sets
+    val_preds_knn = knn_clf.predict(val_X)
+    test_preds_knn = knn_clf.predict(test_X)
+    
+    val_acc_knn = accuracy_score(val_y, val_preds_knn)
+    test_acc_knn = accuracy_score(test_y, test_preds_knn)
+    
+    print(f"K-Nearest Neighbors - Validation Accuracy: {val_acc_knn:.4f}, Test Accuracy: {test_acc_knn:.4f}")
+    
+    return val_acc_knn, test_acc_knn
+
+
+
+# objective functions for rf, svm, lr, knn
+
+def objective_rf(trial):
+    """
+    Objective function for the Random Forest hyperparameter optimization
+    
+    Args:
+    trial: optuna.Trial, a single optimization trial
+    
+    Returns:
+    val_acc_rf: float, validation accuracy
+    """
+    # Hyperparameters to optimize
+    n_estimators = trial.suggest_int('n_estimators', 50, 200)
+    max_depth = trial.suggest_int('max_depth', 5, 20)
+    min_samples_split = trial.suggest_int('min_samples_split', 2, 10)
+    min_samples_leaf = trial.suggest_int('min_samples_leaf', 1, 10)
+
+    model = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth, min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf, random_state=42)
+    
+    model.fit(train_X, train_y)
+    val_acc_rf = model.score(val_X, val_y)
+
+    return val_acc_rf
+
+
+
+
+def objective_svm(trial):
+    """
+    Objective function for the Support Vector Machine hyperparameter optimization
+    
+    Args:
+    trial: optuna.Trial, a single optimization trial
+    
+    Returns:
+    val_acc_svm: float, validation accuracy
+    """
+    # Hyperparameters to optimize
+    c_val = trial.suggest_float('C', 1e-3, 1e2, log=True)
+    gamma = trial.suggest_float('gamma', 1e-3, 1e3, log=True)
+    kernel = trial.suggest_categorical('kernel', ['rbf', 'linear', 'poly', 'sigmoid'])
+
+    model = SVC(C=c_val, kernel=kernel, gamma=gamma, random_state=42)
+
+    model.fit(train_X, train_y)
+    val_acc_svm = model.score(val_X, val_y)
+    
+    return val_acc_svm
+
+
+def objective_lr(trial):
+    """
+    Objective function for the Logistic Regression hyperparameter optimization
+    
+    Args:
+    trial: optuna.Trial, a single optimization trial
+    
+    Returns:
+    val_acc_lr: float, validation accuracy
+    """
+    # Hyperparameters to optimize
+    max_iter = trial.suggest_int('max_iter', 100, 1000)
+
+    model = LogisticRegression(max_iter=max_iter, random_state=42)
+    
+    model.fit(train_X, train_y)
+    val_acc_lr = model.score(val_X, val_y)
+
+    return val_acc_lr
+
+
+def objective_knn(trial):
+    """
+    Objective function for the K-Nearest Neighbors hyperparameter optimization
+    
+    Args:
+    trial: optuna.Trial, a single optimization trial
+    
+    Returns:
+    val_acc_knn: float, validation accuracy
+    """
+    # Hyperparameters to optimize
+    n_neighbors = trial.suggest_int('n_neighbors', 3, 10)
+
+    model = KNeighborsClassifier(n_neighbors=n_neighbors)
+    
+    model.fit(train_X, train_y)
+    val_acc_knn = model.score(val_X, val_y)
+
+    return val_acc_knn
