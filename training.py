@@ -292,3 +292,183 @@ def FCNN_optimised(combined_train_images, combined_train_labels, val_images, val
     torch.save(model.state_dict(), 'best_model.pth')
 
     return val_loss, val_acc, test_loss, test_acc, train_loss, train_acc, train_list, val_list, train_acc_list, val_acc_list, all_preds, all_labels, model
+
+
+
+# Realised that i should have the optimiser outside the optimisation function
+
+
+def objective_fixed_opt(trial, optimizer_name, combined_train_images, combined_train_labels, val_images, val_labels):
+    """
+    Objective function for Optuna to optimize, for the 5 main hyperparameters.
+
+    Sets batch size to 64 and optimizer and the activation function to ReLU
+    
+    Args:
+    trial: optuna.trial.Trial, a trial object
+    
+    Returns:
+    val_acc: float, validation accuracy
+    """
+    if optimizer_name == 'adam' or optimizer_name == 'rmsprop':
+        lr = trial.suggest_float('lr', 0.0005, 0.001, log=True)
+    elif optimizer_name == 'sgd':
+        lr = trial.suggest_float('lr', 0.01, 0.1, log=True)
+    num_hidden_layers = trial.suggest_int('num_hidden_layers', 2, 20)
+    hidden_size = trial.suggest_int('hidden_size', 500, 1000)
+    dropout_rate = trial.suggest_float('dropout_rate', 0.1, 0.4)
+    decay_factor = trial.suggest_float('decay_factor', 0.2, 0.8)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    model = FullyConnectedNN(
+        input_size=1568,
+        hidden_size=hidden_size,
+        num_hidden_layers=num_hidden_layers,
+        activation=nn.ReLU(),
+        dropout_rate=dropout_rate,
+        decay_factor=decay_factor,
+        num_classes=20,
+    ).to(device)
+
+    if optimizer_name == 'adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    elif optimizer_name == 'sgd':
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    elif optimizer_name == 'rmsprop':
+        optimizer = torch.optim.RMSprop(model.parameters(), lr=lr)
+    else:
+        raise ValueError(f"Unknown optimizer: {optimizer_name}")
+    criterion = nn.CrossEntropyLoss()
+
+    # Data loaders
+    train_data_stacked = torch.stack(combined_train_images)
+    train_labels_stacked = torch.tensor(combined_train_labels)
+
+    val_data_stacked = torch.stack(val_images)
+    val_labels_stacked = torch.tensor(val_labels)
+
+    train_tensor = TensorDataset(train_data_stacked, train_labels_stacked)
+    val_tensor = TensorDataset(val_data_stacked, val_labels_stacked)
+
+    train_loader = DataLoader(train_tensor, batch_size=64, shuffle=True)
+    val_loader = DataLoader(val_tensor, batch_size=64, shuffle=False)
+
+    best_val_acc = 0.0
+
+    for epoch in range(10):
+        _, _ = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        _, val_acc, _ ,_ = validate(model, val_loader, criterion, device)
+
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+    
+    return best_val_acc
+    
+
+
+def FCNN_optimised_5_hyp(combined_train_images, combined_train_labels, val_images, val_labels, test_images, test_labels, optimizer, n_trials = 10, no_epochs = 10, optimisation_required = False):
+    """
+    Function to optimise the main 5 hyperparameters of the Fully Connected Neural Network for a given optimiser
+
+    Sets the batch size to 64 and the activation function to ReLU
+
+    Args:
+    n_trials: int, number of trials for the hyperparameter optimisation
+    no_epochs: int, number of epochs for training
+    optimiser: str, 'adam', 'sgd', or 'rmsprop'
+    optimisation_required: bool, whether to perform hyperparameter optimisation
+
+    Returns:
+    val_loss: float, validation loss
+    val_acc: float, validation accuracy
+    test_loss: float, test loss
+    test_acc: float, test accuracy
+    train_loss: float, train loss
+    train_acc: float, train accuracy
+    train_loss_list: list of floats, training loss for each epoch
+    val_loss_list: list of floats, validation loss for each epoch
+    model: nn.Module, trained model
+    """
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    if optimisation_required == True:
+        study = optuna.create_study(direction='maximize')
+        study.optimize(lambda trial: objective_fixed_opt(trial, optimizer), n_trials=n_trials)
+        # joblib.dump(study, 'study.pkl')
+
+        print(f'Best hyperparameters: {study.best_params}')
+        print(f'Best validation accuracy{study.best_value}')
+
+        best_lr = study.best_params['lr']
+        best_num_hidden_layers = study.best_params['num_hidden_layers']
+        best_hidden_size = study.best_params['hidden_size']
+        best_dropout_rate = study.best_params['dropout_rate']
+        best_decay_factor = study.best_params['decay_factor']
+        best_optimizer = optimizer
+    
+
+        model = FullyConnectedNN(
+            input_size=1568,
+            hidden_size=best_hidden_size,
+            num_hidden_layers=best_num_hidden_layers,
+            activation=nn.ReLU(),
+            dropout_rate=best_dropout_rate,
+            decay_factor=best_decay_factor,
+            num_classes=20,
+        ).to(device)
+
+        if optimizer == 'adam':
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'hyperparameters': study.best_params,  
+                'input_size': 1568  
+            }, "best_model_with_params_adam.pth")
+        
+        elif optimizer == 'sgd':
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'hyperparameters': study.best_params,  
+                'input_size': 1568  
+            }, "best_model_with_params_sgd.pth")
+        
+        elif optimizer == 'rmsprop':
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'hyperparameters': study.best_params,  
+                'input_size': 1568  
+            }, "best_model_with_params_rmsprop.pth")
+            
+    else:
+        try:
+            checkpoint = torch.load('best_model_with_params.pth')
+        except FileNotFoundError:
+            print('No checkpoint found. Please run the function with optimisation_required=True first')
+        except KeyError:
+            print('No hyperparameters found in the checkpoint. Please run the function with optimisation_required=True first')
+        
+        best_params = checkpoint['hyperparameters']
+
+        best_lr = best_params['lr']
+        best_num_hidden_layers = best_params['num_hidden_layers']
+        best_hidden_size = best_params['hidden_size']
+        best_dropout_rate = best_params['dropout_rate']
+        best_decay_factor = best_params['decay_factor']
+        best_optimizer = optimizer
+
+        model = FullyConnectedNN(
+            input_size=1568,
+            hidden_size=best_hidden_size,
+            num_hidden_layers=best_num_hidden_layers,
+            activation=nn.ReLU(),
+            dropout_rate=best_dropout_rate,
+            decay_factor=best_decay_factor,
+            num_classes=20,
+        ).to(device)
+
+    val_loss, val_acc, test_loss, test_acc, train_loss, train_acc, train_list, val_list, train_acc_list, val_acc_list, all_preds, all_labels, model = train_and_evaluate(best_lr, best_num_hidden_layers, best_hidden_size, 64, nn.ReLU(), best_dropout_rate, best_decay_factor, combined_train_images, combined_train_labels, val_images, val_labels, test_images, test_labels, best_optimizer, no_epochs)
+ 
+    return val_loss, val_acc, test_loss, test_acc, train_loss, train_acc, train_list, val_list, train_acc_list, val_acc_list, all_preds, all_labels, model
+
+
+
