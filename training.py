@@ -298,7 +298,10 @@ def FCNN_optimised(combined_train_images, combined_train_labels, val_images, val
 # Realised that i should have the optimiser outside the optimisation function
 
 
-def objective_fixed_opt(trial, optimizer_name, combined_train_images, combined_train_labels, val_images, val_labels):
+# Realised that i should have the optimiser outside the optimisation function
+
+
+def objective_fixed_opt(trial, optimizer_name, train_loader, val_loader):
     """
     Objective function for Optuna to optimize, for the 5 main hyperparameters.
 
@@ -341,22 +344,9 @@ def objective_fixed_opt(trial, optimizer_name, combined_train_images, combined_t
         raise ValueError(f"Unknown optimizer: {optimizer_name}")
     criterion = nn.CrossEntropyLoss()
 
-    # Data loaders
-    train_data_stacked = torch.stack(combined_train_images)
-    train_labels_stacked = torch.tensor(combined_train_labels)
-
-    val_data_stacked = torch.stack(val_images)
-    val_labels_stacked = torch.tensor(val_labels)
-
-    train_tensor = TensorDataset(train_data_stacked, train_labels_stacked)
-    val_tensor = TensorDataset(val_data_stacked, val_labels_stacked)
-
-    train_loader = DataLoader(train_tensor, batch_size=64, shuffle=True)
-    val_loader = DataLoader(val_tensor, batch_size=64, shuffle=False)
-
     best_val_acc = 0.0
 
-    for epoch in range(10):
+    for epoch in range(5):
         _, _ = train_one_epoch(model, train_loader, criterion, optimizer, device)
         _, val_acc, _ ,_ = validate(model, val_loader, criterion, device)
 
@@ -365,9 +355,11 @@ def objective_fixed_opt(trial, optimizer_name, combined_train_images, combined_t
     
     return best_val_acc
     
+ 
+    
 
 
-def FCNN_optimised_5_hyp(combined_train_images, combined_train_labels, val_images, val_labels, test_images, test_labels, optimizer, n_trials = 10, no_epochs = 10, optimisation_required = False):
+def FCNN_optimised_5_hyp(optimizer, n_trials = 10, no_epochs = 10, optimisation_required = False):
     """
     Function to optimise the main 5 hyperparameters of the Fully Connected Neural Network for a given optimiser
 
@@ -394,7 +386,7 @@ def FCNN_optimised_5_hyp(combined_train_images, combined_train_labels, val_image
 
     if optimisation_required == True:
         study = optuna.create_study(direction='maximize')
-        study.optimize(lambda trial: objective_fixed_opt(trial, optimizer), n_trials=n_trials)
+        study.optimize(lambda trial: objective_fixed_opt(trial, optimizer, train_loader, val_loader), n_trials=n_trials)
         # joblib.dump(study, 'study.pkl')
 
         print(f'Best hyperparameters: {study.best_params}')
@@ -469,6 +461,7 @@ def FCNN_optimised_5_hyp(combined_train_images, combined_train_labels, val_image
     val_loss, val_acc, test_loss, test_acc, train_loss, train_acc, train_list, val_list, train_acc_list, val_acc_list, all_preds, all_labels, model = train_and_evaluate(best_lr, best_num_hidden_layers, best_hidden_size, 64, nn.ReLU(), best_dropout_rate, best_decay_factor, combined_train_images, combined_train_labels, val_images, val_labels, test_images, test_labels, best_optimizer, no_epochs)
  
     return val_loss, val_acc, test_loss, test_acc, train_loss, train_acc, train_list, val_list, train_acc_list, val_acc_list, all_preds, all_labels, model
+
 
 
 
