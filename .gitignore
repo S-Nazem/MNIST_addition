@@ -1,44 +1,4 @@
 MNIST_venv/
-MNIST_venv/lib
 
-venv/
-
-# Byte-compiled files
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-
-# Distribution/build directories
-build/
-dist/
-*.egg-info/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# Large or temporary data files
-*.csv
-*.h5
-*.pkl
-*.db
-*.sqlite3
-*.zip
-*.gz
-*.tar
-*.tgz
-*.log
-
-# Folders for data or models (customize as needed)
 data/
-models/
-outputs/
 
-# VSCode files
-.vscode/
-
-# PyCharm files
-.idea/
-
-# MacOS files
-.DS_Store
