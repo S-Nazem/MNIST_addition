@@ -6,6 +6,7 @@ from torchvision import transforms, datasets
 import ssl
 from torchvision.transforms import functional as F
 from torchvision.transforms.functional import to_pil_image
+import numpy as np
 
 
 
@@ -172,3 +173,16 @@ def augment_dataset(train_images):
     return augmented_images
 
 
+
+
+def prepare_data_to_numpy(train_images, train_labels, val_images, val_labels, test_images, test_labels):
+    train_X = torch.stack(train_images).view(len(train_images), -1).numpy()
+    train_y = np.array(train_labels)
+
+    val_X = torch.stack(val_images).view(len(val_images), -1).numpy()
+    val_y = np.array(val_labels)
+
+    test_X = torch.stack(test_images).view(len(test_images), -1).numpy()
+    test_y = np.array(test_labels)
+    
+    return train_X, train_y, val_X, val_y, test_X, test_y
